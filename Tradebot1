@@ -1,0 +1,68 @@
+const { Connection, PublicKey, LAMPORTS_PER_SOL } = require('@solana/web3.js');
+
+// Установите ваши эндпоинты
+const httpEndpoint = 'https://quiet-sly-snowflake.solana-mainnet.quiknode.pro/aba5f9905d1a98401bccacc29432c5c07eef11d6/';
+const wsEndpoint = 'wss://quiet-sly-snowflake.solana-mainnet.quiknode.pro/aba5f9905d1a98401bccacc29432c5c07eef11d6/';
+
+// Установка подключения к Solana
+const connection = new Connection(httpEndpoint, {
+    wsEndpoint: wsEndpoint,
+    commitment: 'processed',
+});
+
+// Адрес токен-аккаунта WSOL
+const tokenAccountAddress = new PublicKey('2P8VdUpPqaEbR4pwqe3tQ5cc9F9HJihiXkoFzKmMkveW');
+
+// Подписка на транзакции, связанные с данным токен-аккаунтом
+const subscribeToTransactions = async () => {
+    console.log(`Запуск подписки на транзакции для токен-аккаунта: ${tokenAccountAddress.toString()}`);
+    
+    // Подписываемся на транзакции с начальным уровнем `processed`
+    const signaturesSubscriptionId = connection.onLogs(
+        'all', // Отслеживаем все транзакции в блокчейне
+        async (logs, context) => {
+            if (logs.err) {
+                return; // Пропускаем ошибочные транзакции
+            }
+
+            // Проверяем наличие токен-аккаунта в логах транзакции
+            const relevantInstruction = logs.logs.some((log) => log.includes(tokenAccountAddress.toString()));
+
+            if (relevantInstruction) {
+                console.log('Обнаружена транзакция, затрагивающая отслеживаемый аккаунт.');
+                // Теперь можно получить текущий баланс и определить, произошла ли нужная транзакция
+                const accountInfo = await connection.getAccountInfo(tokenAccountAddress);
+                const currentBalance = accountInfo ? accountInfo.lamports / LAMPORTS_PER_SOL : 0;
+
+                if (currentBalance >= previousBalance + 0,1) {
+                    const transactionTime = new Date().toISOString();
+                    console.log(`Обнаружено пополнение на ${currentBalance - previousBalance} WSOL`);
+                    console.log(`Время обнаружения: ${transactionTime}`);
+                }
+
+                // Обновляем предыдущий баланс для дальнейших проверок
+                previousBalance = currentBalance;
+            }
+        },
+        'processed'
+    );
+
+    console.log(`Бот запущен и отслеживает изменения баланса аккаунта: ${tokenAccountAddress.toString()}`);
+};
+
+// Переменная для хранения предыдущего баланса
+let previousBalance = 0;
+
+// Инициализация начального баланса
+(async () => {
+    previousBalance = await connection.getAccountInfo(tokenAccountAddress)
+        .then((accountInfo) => accountInfo ? accountInfo.lamports / LAMPORTS_PER_SOL : 0);
+    
+    console.log(`Начальный баланс: ${previousBalance} WSOL`);
+    subscribeToTransactions();
+})();
+
+
+
+
+
